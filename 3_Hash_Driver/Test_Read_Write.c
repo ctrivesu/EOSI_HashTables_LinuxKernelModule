@@ -73,33 +73,6 @@ int main()
         ret = write(fd_write_1, ht_node, sizeof(ht_object_t));
         printf("ht530-1: OPENED: %d, DATA TO WRITE: %d %d\n", fd_write_1, ht_node->data, ht_node->key);
 
-
-        // int elem_delete;
-        // elem_delete = 303;
-
-        // ht1_data->key = elem_delete;
-        // ret = read(fd_write_1, ht1_data, sizeof(ht_object_t));
-        // printf("ht530-1: OPENED: %d, READRET: %d, BUFFER: %d %d\n", fd_write_1, ret, ht1_data->data, ht1_data->key);
-        
-
-        // ht_node->data = 0;
-        // ht_node->key = elem_delete;
-        // ret = write(fd_write_1, ht_node, sizeof(ht_object_t));
-        // printf("ht530-1: OPENED: %d, DATA TO WRITE: %d %d\n", fd_write_1, ht_node->data, ht_node->key);
-
-        // ht1_data->key = elem_delete;
-        // ret = read(fd_write_1, ht1_data, sizeof(ht_object_t));
-        // printf("ht530-1: OPENED: %d, READRET: %d, BUFFER: %d %d\n", fd_write_1, ret, ht1_data->data, ht1_data->key);
-        // close(fd_write_1);
-
-        //darg->n = 70;
-        //ioctl(fd_write_1, DUMP, darg);
-
-        //while(darg->object_array[i].data != NULL)
-        //{
-        //    printf("%d K(%3d) D(%3d) |", i+1, darg->object_array[i].key, darg->object_array[i].data);
-        //    i++;
-        //}
         j=0;
         printf("\nIOCTL: HASH TABLE\n");
         while(j<128) 
@@ -122,17 +95,10 @@ int main()
 
         int elem_delete;
         elem_delete = 303;
-        ht_node->data = 2;
+        ht_node->data = 0;
         ht_node->key = elem_delete;
         ret = write(fd_write_1, ht_node, sizeof(ht_object_t));
         printf("ht530-1: OPENED: %d, DATA TO WRITE: %d %d\n", fd_write_1, ht_node->data, ht_node->key);
-
-
-        // // ht_node->data = 2;
-        // // ht_node->key = 303;
-        // // ret = write(fd_write_1, ht_node, sizeof(ht_object_t));
-        // // printf("ht530-1: OPENED: %d, DATA TO WRITE: %d %d\n", fd_write_1, ht_node->data, ht_node->key);
-
 
         j=0;
         printf("\nIOCTL: HASH TABLE\n");
