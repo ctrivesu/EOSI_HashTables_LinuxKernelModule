@@ -11,8 +11,8 @@
 //DEFINITIONS
 #define DUMP _IOWR(530,0, struct dump_arg)
 #define NUMBER_OF_THREADS 5
-#define MAX_HASHTABLE_DATA 1000
-#define MAX_TABLE_OPERATION 150
+#define MAX_HASHTABLE_DATA 30
+#define MAX_TABLE_OPERATION 15
 
 #define SEARCH_OPERATION 1
 #define ADD_OPERATION 2
@@ -34,9 +34,25 @@ struct dump_arg
     ht_object_t object_array[8];    //8 objects to retrieve
 };
 
+//KPROBE DATASTRUCTURES
+typedef struct mprobe_user_output 
+{
+    void *kprobe_addr;
+    unsigned long tsc;
+    int pid;
+    int value;
+} user_output;
+
+//Input Buffer
+struct mprobe_input_buffer 
+{
+    unsigned long func_offset;
+};
+
+
 int hashdata_counter = 0;
 int hashtable_operations = 0;
-int fd_write_1,fd_write_2;
+int fd_write_1,fd_write_2, fd_kprobe;
 
 pthread_mutex_t common_mutex_lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -125,6 +141,17 @@ void search_hash_table()
     read_hash_table(ht_table_number,ht_node->key);
 }
 
+//KPROBE THREAD FUNCTIONS
+void *kprobe_thread_function(void *context) 
+{
+    struct mprobe_input_buffer *mprobe_input_data = context;
+    printf("Kprobe user data %lu",mprobe_input_data->func_offset);
+    write(fd_kprobe, mprobe_input_data, sizeof(struct mprobe_input_buffer));
+    pthread_exit(NULL);
+}
+
+
+
 //Thread function
 void *thread_function(void *context)
 {
@@ -189,13 +216,15 @@ void *thread_function(void *context)
 
 
 
-int main()
+int main(int argc, char **argv)
 {
     srand(time(0));
     int joinindex, index;
     pthread_t pid[NUMBER_OF_THREADS];
-    //ht_object_t *ht_node;
-    //ht_node = (ht_object_t *) malloc(sizeof(ht_object_t));
+    struct mprobe_input_buffer mprobe_input;
+
+    //Get Kprobe Offset address from user input    
+    sscanf(argv[1], "%lu", &mprobe_input.func_offset);
     
     fd_write_1 = open("/dev/ht530-1",O_RDWR);
     if(fd_write_1 < 0) 
@@ -210,8 +239,15 @@ int main()
         printf("Unable to open ht530-2 device\n");
         exit(1);
     }
+
+    fd_kprobe = open("/dev/Mprobe", O_RDWR);
+    if(fd_kprobe < 0) 
+    {
+        printf("Unable to open Kprobe device\n");
+        exit(1);
+    }  
       
-    printf("BOTH DEVICES OPENED %d %d\n", fd_write_1, fd_write_2);
+    printf("BOTH DEVICES OPENED %d %d %d\n", fd_write_1, fd_write_2, fd_kprobe);
 
     
     
@@ -231,9 +267,13 @@ int main()
         
         // setting the new scheduling param 
         pthread_attr_setschedparam(&attr,&param);
-        pthread_create(&pid[index],&attr,thread_function,NULL);
-    }
 
+//        pthread_create(&pid[index],&attr,thread_function,NULL);
+        if(index==0) 
+        {   pthread_create(&pid[index],&attr,kprobe_thread_function,&mprobe_input); }   //Create first thread as Kprobe thread 
+        else 
+        {   pthread_create(&pid[index],&attr,thread_function,NULL); }
+    }
 
 
     // JOIN - WAITING TO END
@@ -245,50 +285,53 @@ int main()
 
 
     // IOCTL DUMP
-    int j = 0;
-    int i;
-    struct dump_arg* darg ;//= (struct dump_arg*) malloc(sizeof(struct dump_arg));
+    // int j = 0;
+    // int i;
+    // struct dump_arg* darg ;//= (struct dump_arg*) malloc(sizeof(struct dump_arg));
 
-    printf("\nIOCTL: HASH TABLE 1\n");
-    while(j<128) 
-    {
-        //darg = (struct dump_arg*) malloc(sizeof(struct dump_arg));
-        darg = (struct dump_arg*) calloc(1, sizeof(struct dump_arg));
-        darg->n = j;
-        printf("IOCTL BUCKET:%3d|", j);
+    // printf("\nIOCTL: HASH TABLE 1\n");
+    // while(j<128) 
+    // {
+    //     //darg = (struct dump_arg*) malloc(sizeof(struct dump_arg));
+    //     darg = (struct dump_arg*) calloc(1, sizeof(struct dump_arg));
+    //     darg->n = j;
+    //     printf("IOCTL BUCKET:%3d|", j);
 
-        ioctl(fd_write_1, DUMP, darg);
+    //     ioctl(fd_write_1, DUMP, darg);
         
-        for(i = 0; i < 8; ++i) 
-        {
-          printf("%d K(%3d) D(%3d)|", i+1, darg->object_array[i].key, darg->object_array[i].data);
-        }
-        printf("\n");
-        j++;
-        free(darg);
-    }
+    //     for(i = 0; i < 8; ++i) 
+    //     {
+    //       printf("%d K(%3d) D(%3d)|", i+1, darg->object_array[i].key, darg->object_array[i].data);
+    //     }
+    //     printf("\n");
+    //     j++;
+    //     free(darg);
+    // }
 
-    printf("\nIOCTL: HASH TABLE 2\n");
-    j=0;
-    while(j<128) 
-    {
-        //darg = (struct dump_arg*) malloc(sizeof(struct dump_arg));
-        darg = (struct dump_arg*) calloc(1, sizeof(struct dump_arg));
-        darg->n = j;
-        printf("IOCTL BUCKET:%3d|", j);
+    // printf("\nIOCTL: HASH TABLE 2\n");
+    // j=0;
+    // while(j<128) 
+    // {
+    //     //darg = (struct dump_arg*) malloc(sizeof(struct dump_arg));
+    //     darg = (struct dump_arg*) calloc(1, sizeof(struct dump_arg));
+    //     darg->n = j;
+    //     printf("IOCTL BUCKET:%3d|", j);
 
-        ioctl(fd_write_2, DUMP, darg);
+    //     ioctl(fd_write_2, DUMP, darg);
         
-        for(i = 0; i < 8; ++i) 
-        {
-          printf("%d K(%3d) D(%3d)|", i+1, darg->object_array[i].key, darg->object_array[i].data);
-        }
-        printf("\n");
-        j++;
-        free(darg);
-    }
+    //     for(i = 0; i < 8; ++i) 
+    //     {
+    //       printf("%d K(%3d) D(%3d)|", i+1, darg->object_array[i].key, darg->object_array[i].data);
+    //     }
+    //     printf("\n");
+    //     j++;
+    //     free(darg);
+    // }
+
+    pthread_mutex_destroy(&common_mutex_lock);
     close(fd_write_1);
     close(fd_write_2);
+    close(fd_kprobe);
     return 0;
 }
 
