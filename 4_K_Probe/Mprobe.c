@@ -75,8 +75,8 @@ static ssize_t mprobe_device_read(struct file *, char *, size_t, loff_t *);
 static ssize_t mprobe_device_write(struct file *, const char *, size_t, loff_t *);
 
 
-static int mprobe_pre_handler(struct kprobe *p, struct pt_regs *regs) {
-	
+static int mprobe_pre_handler(struct kprobe *p, struct pt_regs *regs) 
+{	
 	uint64_t tsc;
 	int value_at_address;
 	struct task_struct* task = current;
@@ -124,29 +124,26 @@ static void mprobe_post_handler(struct kprobe *p, struct pt_regs *regs, unsigned
 static int mprobe_device_open(struct inode * inode, struct file * filp) 
 {
 	kp = NULL;
-	mprobe_output = NULL;
-	
+	mprobe_output = NULL;	//Resetting the memory pointer	
 	mprobe_output = kmalloc(sizeof(struct mprobe_ring_buffer), GFP_KERNEL);
 		
-	if (!mprobe_output) {
-		printk("Bad Kmalloc\n"); return -ENOMEM;
-	}
+	if (!mprobe_output) 
+	{ printk("Bad Kmalloc\n"); return -ENOMEM; }
 	
 	if(!(mprobe_output->data = kmalloc(sizeof(user_output)* SIZE_OF_BUFFER, GFP_KERNEL)))
-	{		
-		printk("Bad Kmalloc\n");
-		 return -ENOMEM;
-	}
+	{ printk("Bad Kmalloc\n"); return -ENOMEM; }
 		
 	mprobe_output->head =0;
 	mprobe_output->tail =0;
 	mprobe_output->count=0;
 	mprobe_output->loss =0;
-	
+
+	printk(KERN_INFO "Mprobe - Device Opened Successfully\n");	
 	return 0;
 }
 
-static int mprobe_device_release(struct inode * inode, struct file * filp) {
+static int mprobe_device_release(struct inode * inode, struct file * filp) 
+{
 	//clear mprobe_output if it exists
 	if(mprobe_output != NULL) {
 		kfree(mprobe_output->data);
@@ -158,15 +155,18 @@ static int mprobe_device_release(struct inode * inode, struct file * filp) {
 		kfree(kp);
 		kp = NULL;
 	}
+	printk(KERN_INFO "Mprobe - Device closed Successfully\n");
 	return 0;
 }
 
-static ssize_t mprobe_device_read(struct file * filp, char *buf, size_t count, loff_t *ppos) {
-
+static ssize_t mprobe_device_read(struct file * filp, char *buf, size_t count, loff_t *ppos) 
+{
 	int read_bytes,result;	
-	if(mprobe_output!= NULL && mprobe_output->count >= 1) {
+	if(mprobe_output!= NULL && mprobe_output->count >= 1) 
+	{
 		int counter= mprobe_output->head;
-		if (copy_to_user((struct mprobe_ring_buffer *)buf, &(mprobe_output->data[counter]) , sizeof(user_output))) {	
+		if (copy_to_user((struct mprobe_ring_buffer *)buf, &(mprobe_output->data[counter]) , sizeof(user_output))) 
+		{	
 			printk(KERN_INFO "Mprobe - Unable to read data from ring buffer\n");
 			result = -1;
 			copy_to_user((int*)buf, &result, sizeof(int));
@@ -175,12 +175,13 @@ static ssize_t mprobe_device_read(struct file * filp, char *buf, size_t count, l
 		read_bytes = sizeof(user_output);
 		mprobe_output->head = (mprobe_output->head + 1)% SIZE_OF_BUFFER;
 		return read_bytes;
-	} else {
+	} 
+	else 
+	{
 		printk(KERN_INFO "Mprobe - Unable to read data from ring buffer\n");
 		result = -1;
 		copy_to_user((int*)buf, &result, sizeof(int));
 		return -EINVAL;
-	  
 	}
 }
 
